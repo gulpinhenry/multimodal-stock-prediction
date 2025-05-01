@@ -7,7 +7,7 @@ dependencies:
   - pyspark
   - kafka-python
   - transformers
-  - elasticsearch
+  - elasticsearch=8.13.2
   - faker
   - ipykernel
   - pandas

@@ -11,6 +11,8 @@ echo "⟳ Clearing any existing stack…"
 docker compose down -v >/dev/null 2>&1 || true
 set -euo pipefail
 
+mkdir -p logs
+
 # 0) define variables
 SPARK_MASTER_SERVICE=spark-master
 SPARK_MASTER_URL=spark://spark-master:7077
@@ -18,8 +20,8 @@ APP_PATH=/opt/app               # where we mount your repo inside the container
 PY_SPARK_PACKAGE=org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5
 
 # 1) Up your core services
-echo "⟳ Bringing up ZK, Kafka & Spark cluster in Docker…"
-docker compose up -d zookeeper kafka spark-master spark-worker
+echo "⟳ Bringing up ZK, Kafka, Elasticsearch & Spark cluster in Docker…"
+docker compose up -d zookeeper kafka elasticsearch kibana spark-master spark-worker
 docker compose exec kafka \
   kafka-topics --create --topic twitter_raw  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
   kafka-topics --create --topic reddit_raw   --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
@@ -31,6 +33,17 @@ echo "↻ Waiting for Kafka on localhost:9092 …"
 for i in {1..60}; do
   if (echo > /dev/tcp/127.0.0.1/9092) &>/dev/null; then
     echo "✓ Kafka is up."
+    break
+  fi
+  sleep 1
+  echo "Waiting… ($i)"
+done
+
+# 3) Wait for Elasticsearch
+echo "↻ Waiting for Elasticsearch on localhost:9200 …"
+for i in {1..60}; do
+  if curl -s "http://localhost:9200/_cluster/health" > /dev/null; then
+    echo "✓ Elasticsearch is up."
     break
   fi
   sleep 1
@@ -55,7 +68,6 @@ for p in twitter reddit news price; do
   conda run -n sentiment-stocks --no-capture-output \
         python "ingestion/${p}_producer.py" &
 done
-
 
 # 5) Wait for everything
 wait

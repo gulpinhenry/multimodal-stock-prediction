@@ -2,6 +2,8 @@
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
+    networks:
+      - stock-network
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -15,6 +17,8 @@ services:
     container_name: kafka 
     depends_on: [zookeeper]
     hostname: kafka
+    networks:
+      - stock-network
     ports: ["9092:9092"]
     environment:
       KAFKA_BROKER_ID: 1
@@ -22,10 +26,12 @@ services:
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    networks:
+      - stock-network
     ports: ["9200:9200"]
     environment:
       discovery.type: single-node
@@ -35,6 +41,8 @@ services:
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.13.4
+    networks:
+      - stock-network
     depends_on: [elasticsearch]
     ports: ["5601:5601"]
     environment:
@@ -45,6 +53,8 @@ services:
       context: .
       dockerfile: spark-py.Dockerfile
     image: spark-py:3.5.5
+    networks:
+      - stock-network
     environment:
       - SPARK_MODE=master
       - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3
@@ -61,6 +71,8 @@ services:
       context: .
       dockerfile: spark-py.Dockerfile
     image: spark-py:3.5.5
+    networks:
+      - stock-network
     depends_on: [spark-master]
     environment:
       - SPARK_MODE=worker
@@ -70,6 +82,10 @@ services:
     volumes:
       - .:/opt/app
     working_dir: /opt/app
+
+networks:
+  stock-network:
+    driver: bridge
 
 volumes:
   es_data: {}
