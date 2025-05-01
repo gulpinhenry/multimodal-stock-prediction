@@ -1,0 +1,14 @@
+name: sentiment-stocks
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pyspark
+  - kafka-python
+  - transformers
+  - elasticsearch
+  - faker
+  - ipykernel
+  - pandas
+  - pyyaml

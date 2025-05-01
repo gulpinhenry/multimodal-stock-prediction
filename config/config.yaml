@@ -1,0 +1,24 @@
+kafka:
+  bootstrap_servers:
+    internal: "kafka:29092"
+    external: "localhost:9092"   # <- host-side clients use this
+  topics:
+    twitter:   "twitter_raw"
+    reddit:    "reddit_raw"
+    news:      "news_raw"
+    prices:    "prices_raw"
+    sentiment_stream: "sentiment_scored"
+
+spark:
+  app_name: "SentimentStreaming"
+  master: "local[*]"
+  kafka_packages: "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5"
+
+elastic:
+  hosts: ["http://localhost:9200"]
+  index: "sentiment_stocks"
+
+symbols:
+  watchlist: ["AAPL","TSLA","GME","AMZN","MSFT","NVDA"]
+
+mode: "dummy"        # ⇠ new flag (ignored elsewhere, just for clarity)
