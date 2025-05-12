@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-import json, random, time, uuid, yaml, os
-from faker import Faker
+import json, time, uuid, yaml, os
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 import socket
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+import yfinance as yf
+import pandas as pd
 
 # Set up logging
 logging.basicConfig(
@@ -21,7 +22,6 @@ logging.basicConfig(
 script_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(script_dir, "..", "config", "config.yaml")
 cfg = yaml.safe_load(open(config_path))
-fake = Faker()
 
 def pick_bootstrap():
     # Simple heuristic: the Docker DNS name 'kafka' only resolves in-container
@@ -46,19 +46,41 @@ def lazy_producer():
 
 producer = lazy_producer()
 # Start each ticker at an arbitrary base price
-BASE = {s: random.uniform(50, 300) for s in cfg["symbols"]["watchlist"]}
+watchlist = cfg["symbols"]["watchlist"]
 
-print("⇢ Dummy Price producer running …")
-while True:
-    for sym in BASE:
-        # simple random walk
-        BASE[sym] += random.uniform(-1, 1)
+# Fetch historical data (60 days)
+end = datetime.now()
+start = end - timedelta(days=60)
+historical_data = {}
+
+logging.info("Fetching historical data from yfinance...")
+
+for symbol in watchlist:
+    df = yf.download(symbol, start=start, end=end)
+    if df.empty:
+        logging.warning(f"No data for symbol: {symbol}")
+        continue
+    # historical_data[symbol] = df.reset_index()[["Date", "Close", "Open", "Volume"]]
+    historical_data[symbol] = df
+    logging.info("Fetched historical price data for company : ", symbol)
+    time.sleep(1)
+    break
+
+logging.info("⇢ Price producer streaming real historical data…")
+
+for i in range(60):  # Assuming 60 data points per symbol (one per day)
+    for symbol, df in historical_data.items():
+        if i >= len(df):
+            continue
+        row = df.iloc[i]
         message = {
-            "id": str(uuid.uuid4()),
-            "symbol": sym,
-            "price": round(BASE[sym], 2),
-            "ts": time.time()
+            # "id": str(uuid.uuid4()),
+            "symbol": symbol,
+            "closing_price": round(row["Close", symbol], 2),
+            "opening_price": round(row["Open", symbol], 2),
+            "volume": round(row["Volume", symbol], 2),
+            "timestamp": row.name.strftime("%Y-%m-%d")
         }
         producer.send(cfg["kafka"]["topics"]["prices"], message)
-        logging.info(f"Price: {json.dumps(message)}")
+        logging.info(f"Sent price: {json.dumps(message)}")
     time.sleep(1)

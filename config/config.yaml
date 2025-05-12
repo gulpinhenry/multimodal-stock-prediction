@@ -19,6 +19,23 @@ elastic:
   index: "sentiment_stocks"
 
 symbols:
-  watchlist: ["AAPL","TSLA","GME","AMZN","MSFT","NVDA"]
+  watchlist:  [
+    "MSFT",  # Microsoft
+    "NVDA",  # NVIDIA
+    "TSLA",  # Tesla
+    "META",  # Meta Platforms (Facebook)
+    "AMZN",  # Amazon
+    "AMC",   # AMC Entertainment
+    "GME",   # GameStop
+    "PLTR",  # Palantir Technologies
+    "NFLX",  # Netflix
+    "SPOT",  # Spotify
+    "ZM",    # Zoom Video Communications
+    "RIVN",  # Rivian Automotive
+    "CRWD"   # CrowdStrike Holdings
+  ]
+
+bluesky:
+  terms: ["microsoft", "nvidia", "tesla", "meta", "facebook", "amazon", "amc", "gamestop", "palantir", "netflix", "spotify", "zoom", "rivian", "crowdstrike"]
 
 mode: "dummy"        # ⇠ new flag (ignored elsewhere, just for clarity)

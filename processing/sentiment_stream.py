@@ -39,10 +39,11 @@ schema_text = StructType() \
     .add("ts", DoubleType())
 
 schema_price = StructType() \
-    .add("id", StringType()) \
     .add("symbol", StringType()) \
-    .add("price", DoubleType()) \
-    .add("ts", DoubleType())
+    .add("opening_price", DoubleType()) \
+    .add("timestamp", StringType()) \
+    .add("closing_price", DoubleType()) \
+    .add("volume", DoubleType())
 
 SENTIMENTS = ["POSITIVE", "NEGATIVE", "NEUTRAL"]
 
