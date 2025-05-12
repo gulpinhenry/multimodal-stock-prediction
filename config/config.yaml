@@ -37,5 +37,7 @@ symbols:
 
 bluesky:
   terms: ["microsoft", "nvidia", "tesla", "meta", "facebook", "amazon", "amc", "gamestop", "palantir", "netflix", "spotify", "zoom", "rivian", "crowdstrike"]
+  username: "bigdatap.bsky.social"
+  password: "BigDataProject@123"
 
 mode: "dummy"        # ⇠ new flag (ignored elsewhere, just for clarity)

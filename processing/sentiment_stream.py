@@ -3,7 +3,7 @@ import logging
 import json, random, yaml, os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, udf, to_json, struct
-from pyspark.sql.types import StructType, StringType, DoubleType
+from pyspark.sql.types import StructType, StringType, DoubleType, IntegerType
 
 # Set up logging
 logging.basicConfig(
@@ -35,15 +35,21 @@ logger.info("Spark session started successfully.")
 
 schema_text = StructType() \
     .add("id", StringType()) \
+    .add("company", StringType()) \
+    .add("timestamp", StringType()) \
     .add("text", StringType()) \
-    .add("ts", DoubleType())
+    .add("replyCount", IntegerType()) \
+    .add("likeCount", IntegerType()) \
+    .add("quoteCount", IntegerType()) \
+    .add("repostCount", IntegerType())
 
 schema_price = StructType() \
     .add("symbol", StringType()) \
-    .add("opening_price", DoubleType()) \
-    .add("timestamp", StringType()) \
     .add("closing_price", DoubleType()) \
-    .add("volume", DoubleType())
+    .add("opening_price", DoubleType()) \
+    .add("volume", DoubleType()) \
+    .add("timestamp", StringType())
+    
 
 SENTIMENTS = ["POSITIVE", "NEGATIVE", "NEUTRAL"]
 
@@ -82,10 +88,12 @@ def stream(topic: str, schema: StructType):
 
 logger.info("Initializing streams for Twitter, Reddit, and News...")
 twitter = stream(cfg["kafka"]["topics"]["twitter"], schema_text)
-reddit  = stream(cfg["kafka"]["topics"]["reddit"],  schema_text)
-news    = stream(cfg["kafka"]["topics"]["news"],    schema_text)
+# reddit  = stream(cfg["kafka"]["topics"]["reddit"],  schema_text)
+# news    = stream(cfg["kafka"]["topics"]["news"],    schema_text)
+prices = stream(cfg["kafka"]["topics"]["prices"], schema_price)
 
-texts  = twitter.unionByName(reddit).unionByName(news)
+# texts  = twitter.unionByName(reddit).unionByName(news)
+texts = twitter
 logger.info("Successfully unioned all text streams.")
 
 scored = texts.withColumn("sentiment", dummy_score(col("text")))
