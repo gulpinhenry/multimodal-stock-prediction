@@ -22,11 +22,18 @@ PY_SPARK_PACKAGE=org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5
 # 1) Up your core services
 echo "⟳ Bringing up ZK, Kafka, Elasticsearch & Spark cluster in Docker…"
 docker compose up -d zookeeper kafka elasticsearch kibana spark-master spark-worker
-docker compose exec kafka \
-  kafka-topics --create --topic twitter_raw  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
-  kafka-topics --create --topic reddit_raw   --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
-  kafka-topics --create --topic news_raw     --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
-  kafka-topics --create --topic sentiment_scored --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+# docker compose exec kafka \
+#   kafka-topics --create --topic twitter_raw  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
+#   kafka-topics --create --topic reddit_raw   --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
+#   kafka-topics --create --topic news_raw     --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
+#   kafka-topics --create --topic sentiment_scored --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+docker compose exec kafka bash -c "
+  kafka-topics --create --topic twitter_raw       --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+  kafka-topics --create --topic prices_raw       --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+  kafka-topics --create --topic reddit_raw        --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+  kafka-topics --create --topic news_raw          --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+  kafka-topics --create --topic sentiment_scored  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+"
 
 # 2) Wait for Kafka
 echo "↻ Waiting for Kafka on localhost:9092 …"
@@ -54,20 +61,30 @@ done
 #    assumes your compose mounts the repo at /opt/app and working_dir is /opt/app
 echo "⟳ Submitting Spark job inside container ${SPARK_MASTER_SERVICE}…"
 MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" \
-docker compose exec ${SPARK_MASTER_SERVICE} \
-  /opt/bitnami/spark/bin/spark-submit \
+# docker compose exec ${SPARK_MASTER_SERVICE} \
+#   /opt/bitnami/spark/bin/spark-submit \
+#       --master ${SPARK_MASTER_URL} \
+#       --packages ${PY_SPARK_PACKAGE} \
+#       ${APP_PATH}/processing/sentiment_stream.py \
+#   2>&1 | tee -a logs/sentiment_stream.log | sed 's/^/   [spark] /g' &
+# docker compose exec spark-master \
+#   /opt/bitnami/spark/bin/spark-submit \
+#     --master spark://spark-master:7077 \
+#     /opt/app/processing/sentiment_stream.py
+docker compose exec -T ${SPARK_MASTER_SERVICE} bash -c "\
+  nohup /opt/bitnami/spark/bin/spark-submit \
       --master ${SPARK_MASTER_URL} \
-      --packages ${PY_SPARK_PACKAGE} \
-      ${APP_PATH}/processing/sentiment_stream.py \
-  2>&1 | sed 's/^/   [spark] /g' &
+      /opt/app/processing/sentiment_stream.py > /opt/app/logs/spark_submit.log 2>&1 &"
+
 
 # 4) Launch dummy producers on the host
 echo "⟳ Starting dummy producers on host…"
 
-for p in twitter reddit news price; do
+for p in twitter price; do
   conda run -n sentiment-stocks --no-capture-output \
         python "ingestion/${p}_producer.py" &
 done
+
 
 # 5) Wait for everything
 wait

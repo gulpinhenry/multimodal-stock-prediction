@@ -53,6 +53,8 @@ schema_price = StructType() \
     .add("symbol", StringType()) \
     .add("closing_price", DoubleType()) \
     .add("opening_price", DoubleType()) \
+    .add("high", DoubleType()) \
+    .add("low", DoubleType()) \
     .add("volume", DoubleType()) \
     .add("timestamp", StringType())
 

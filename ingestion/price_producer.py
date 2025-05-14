@@ -78,6 +78,8 @@ for i in range(60):  # Assuming 60 data points per symbol (one per day)
             "symbol": symbol,
             "closing_price": round(row["Close", symbol], 2),
             "opening_price": round(row["Open", symbol], 2),
+            "high": round(row["High", symbol], 2),
+            "low": round(row["Low", symbol], 2),
             "volume": round(row["Volume", symbol], 2),
             "timestamp": row.name.strftime("%Y-%m-%d")
         }
