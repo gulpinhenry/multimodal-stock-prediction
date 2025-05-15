@@ -83,9 +83,19 @@ services:
       - .:/opt/app
     working_dir: /opt/app
 
+  mongodb:
+    image: mongo:latest
+    networks:
+      - stock-network
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
 networks:
   stock-network:
     driver: bridge
 
 volumes:
   es_data: {}
+  mongo_data: {}

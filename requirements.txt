@@ -1,0 +1,11 @@
+pyspark
+kafka-python
+transformers
+elasticsearch==8.13.2
+faker
+ipykernel
+pandas
+pyyaml
+yfinance
+requests
+pyyaml

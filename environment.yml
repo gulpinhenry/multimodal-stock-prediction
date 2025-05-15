@@ -12,3 +12,11 @@ dependencies:
   - ipykernel
   - pandas
   - pyyaml
+  - yfinance
+  - requests
+  - pymongo
+  - torch
+  - torchvision
+  - torchaudio
+  - scikit-learn
+  - matplotlib
