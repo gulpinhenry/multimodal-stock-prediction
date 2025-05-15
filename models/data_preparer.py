@@ -74,11 +74,10 @@ class DataPreparer:
         ]
         
         return list(self.collection.aggregate(pipeline))
-        logger.info("Sentiment aggregation completed.")
 
     def _get_price_data(self):
         """Get all price data with all required fields"""
-        return list(self.db.your_collection.find(
+        return list(self.collection.find(
             {"data.type": "price"},
             {
                 "_id": 0,

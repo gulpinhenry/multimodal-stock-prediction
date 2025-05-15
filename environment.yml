@@ -15,6 +15,3 @@ dependencies:
   - yfinance
   - requests
   - pymongo
-  - torch
-  - torchvision
-  - torchaudio
