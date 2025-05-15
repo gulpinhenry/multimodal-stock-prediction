@@ -86,11 +86,64 @@ echo "⟳ Starting dummy producers and MongoDB consumer on host…"
 # Start MongoDB consumer in the background, redirecting its output
 conda run -n sentiment-stocks python "ingestion/mongo_consumer.py" > logs/mongo_consumer_stdout.log 2> logs/mongo_consumer_stderr.log &
 
+echo "⟳ Starting Sentiment Analyzer..."
+conda run -n sentiment-stocks python "models/sentiment_analyzer.py" > logs/sentiment_analyzer.log 2>&1 &
+
+
 for p in twitter price; do
   conda run -n sentiment-stocks --no-capture-output \
         python "ingestion/${p}_producer.py" &
 done
 
+
+
+
+# Training and Inference
+# 6. Add new options for model training and inference
+while getopts "ti" opt; do
+  case $opt in
+    t)
+      echo "⟳ Starting model training with fresh data aggregation..."
+      cd "$(dirname "$0")"
+      # Run the Python file directly
+      conda run -n sentiment-stocks python models/model_training.py > logs/model_training.log 2>&1
+      ;;
+    i)
+      echo "⟳ Starting inference service..."
+      # Ensure the process is properly backgrounded and managed
+      (conda run -n sentiment-stocks python models/inference.py > logs/inference_service.log 2>&1) &
+      echo $! > inference_service.pid  # Save PID for later management
+      ;;
+    *)
+      echo "Usage: $0 [-t] [-i]" >&2
+      echo "  -t  Run model training" >&2
+      echo "  -i  Start inference service" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# # If no options passed, run the standard pipeline
+# if [ $OPTIND -eq 1 ]; then
+#   echo "✓ Standard pipeline started"
+#   # Keep your existing pipeline flow here
+# fi
+
+# 7. Add health check for MongoDB data
+echo "✓ Verifying MongoDB data..."
+docker exec -it mongodb mongo --eval "
+db = db.getSiblingDB('stock_sentiment');
+print('Collections:');
+db.getCollectionNames();
+print('\nSample sentiment data:');
+db.your_collection.find({'data.type':'sentiment'}).limit(1).pretty();
+print('\nSample price data:');
+db.your_collection.find({'data.type':'price'}).limit(1).pretty();
+" > logs/mongo_data_check.log
+
+echo "✓ Pipeline ready"
+echo "   - Use './run_pipeline.sh -t' to train model"
+echo "   - Use './run_pipeline.sh -i' to start inference"
 
 # 5) Wait for everything
 wait
