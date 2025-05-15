@@ -1,11 +1,3 @@
 # multimodal-stock-prediction
-conda env create -f environment.yml
-
-
-# clone / replace files, then:
-conda env update -f environment.yml --prune
-conda activate sentiment-stocks
-
-
-# launch everything locally
-bash run_pipeline.sh
+Harsha Mupparaju Nived Damodaran Henry Kam Abhipal Sharma
+sm12754	nd2746	hjk9412	as20410
