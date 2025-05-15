@@ -62,7 +62,7 @@ for symbol in watchlist:
         continue
     # historical_data[symbol] = df.reset_index()[["Date", "Close", "Open", "Volume"]]
     historical_data[symbol] = df
-    logging.info("Fetched historical price data for company : ", symbol)
+    logging.info(f"Fetched historical price data for company: {symbol}")
     time.sleep(1)
     break
 
@@ -76,11 +76,11 @@ for i in range(60):  # Assuming 60 data points per symbol (one per day)
         message = {
             # "id": str(uuid.uuid4()),
             "symbol": symbol,
-            "closing_price": round(row["Close", symbol], 2),
-            "opening_price": round(row["Open", symbol], 2),
-            "high": round(row["High", symbol], 2),
-            "low": round(row["Low", symbol], 2),
-            "volume": round(row["Volume", symbol], 2),
+            "closing_price": round(float(row["Close"]), 2),
+            "opening_price": round(float(row["Open"]), 2),
+            "high": round(float(row["High"]), 2),
+            "low": round(float(row["Low"]), 2),
+            "volume": round(float(row["Volume"]), 2),
             "timestamp": row.name.strftime("%Y-%m-%d")
         }
         producer.send(cfg["kafka"]["topics"]["prices"], message)

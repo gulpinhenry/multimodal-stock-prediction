@@ -20,8 +20,8 @@ APP_PATH=/opt/app               # where we mount your repo inside the container
 PY_SPARK_PACKAGE=org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5
 
 # 1) Up your core services
-echo "⟳ Bringing up ZK, Kafka, Elasticsearch & Spark cluster in Docker…"
-docker compose up -d zookeeper kafka elasticsearch kibana spark-master spark-worker
+echo "⟳ Bringing up ZK, Kafka, Elasticsearch, Kibana, MongoDB & Spark cluster in Docker…"
+docker compose up -d zookeeper kafka elasticsearch kibana mongodb spark-master spark-worker
 # docker compose exec kafka \
 #   kafka-topics --create --topic twitter_raw  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
 #   kafka-topics --create --topic reddit_raw   --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
@@ -34,6 +34,9 @@ docker compose exec kafka bash -c "
   kafka-topics --create --topic news_raw          --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
   kafka-topics --create --topic sentiment_scored  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
 "
+
+echo "✓ Kafka topics ensured. Waiting a few seconds for topic propagation..."
+sleep 5 # Add a small delay
 
 # 2) Wait for Kafka
 echo "↻ Waiting for Kafka on localhost:9092 …"
@@ -77,8 +80,11 @@ docker compose exec -T ${SPARK_MASTER_SERVICE} bash -c "\
       /opt/app/processing/sentiment_stream.py > /opt/app/logs/spark_submit.log 2>&1 &"
 
 
-# 4) Launch dummy producers on the host
-echo "⟳ Starting dummy producers on host…"
+# 4) Launch dummy producers and MongoDB consumer on the host
+echo "⟳ Starting dummy producers and MongoDB consumer on host…"
+
+# Start MongoDB consumer in the background, redirecting its output
+conda run -n sentiment-stocks python "ingestion/mongo_consumer.py" > logs/mongo_consumer_stdout.log 2> logs/mongo_consumer_stderr.log &
 
 for p in twitter price; do
   conda run -n sentiment-stocks --no-capture-output \

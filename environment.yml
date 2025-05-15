@@ -12,3 +12,6 @@ dependencies:
   - ipykernel
   - pandas
   - pyyaml
+  - yfinance
+  - requests
+  - pymongo

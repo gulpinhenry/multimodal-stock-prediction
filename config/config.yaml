@@ -41,3 +41,9 @@ bluesky:
   password: "BigDataProject@123"
 
 mode: "dummy"        # ⇠ new flag (ignored elsewhere, just for clarity)
+
+mongodb:
+  host: "localhost"
+  port: 27017
+  database: "stock_data"
+  collection: "stream_data"
