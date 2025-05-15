@@ -22,11 +22,8 @@ PY_SPARK_PACKAGE=org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5
 # 1) Up your core services
 echo "⟳ Bringing up ZK, Kafka, Elasticsearch, Kibana, MongoDB & Spark cluster in Docker…"
 docker compose up -d zookeeper kafka elasticsearch kibana mongodb spark-master spark-worker
-# docker compose exec kafka \
-#   kafka-topics --create --topic twitter_raw  --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
-#   kafka-topics --create --topic reddit_raw   --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
-#   kafka-topics --create --topic news_raw     --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092 && \
-#   kafka-topics --create --topic sentiment_scored --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
+
+echo "⟳ Creating Kafka topics..."
 docker compose exec kafka bash -c "
   kafka-topics --create --topic twitter_raw       --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
   kafka-topics --create --topic prices_raw       --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server kafka:29092
@@ -60,59 +57,56 @@ for i in {1..60}; do
   echo "Waiting… ($i)"
 done
 
-# 3) Submit Spark streaming job inside the container
-#    assumes your compose mounts the repo at /opt/app and working_dir is /opt/app
+# 4) Submit Spark streaming job
 echo "⟳ Submitting Spark job inside container ${SPARK_MASTER_SERVICE}…"
-MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" \
-# docker compose exec ${SPARK_MASTER_SERVICE} \
-#   /opt/bitnami/spark/bin/spark-submit \
-#       --master ${SPARK_MASTER_URL} \
-#       --packages ${PY_SPARK_PACKAGE} \
-#       ${APP_PATH}/processing/sentiment_stream.py \
-#   2>&1 | tee -a logs/sentiment_stream.log | sed 's/^/   [spark] /g' &
-# docker compose exec spark-master \
-#   /opt/bitnami/spark/bin/spark-submit \
-#     --master spark://spark-master:7077 \
-#     /opt/app/processing/sentiment_stream.py
 docker compose exec -T ${SPARK_MASTER_SERVICE} bash -c "\
   nohup /opt/bitnami/spark/bin/spark-submit \
       --master ${SPARK_MASTER_URL} \
       /opt/app/processing/sentiment_stream.py > /opt/app/logs/spark_submit.log 2>&1 &"
 
+# 5) Start core services in correct order
+echo "⟳ Starting core services..."
 
-# 4) Launch dummy producers and MongoDB consumer on the host
-echo "⟳ Starting dummy producers and MongoDB consumer on host…"
-
-# Start MongoDB consumer in the background, redirecting its output
+# Start MongoDB consumer
+echo "⟳ Starting MongoDB consumer..."
 conda run -n sentiment-stocks python "ingestion/mongo_consumer.py" > logs/mongo_consumer_stdout.log 2> logs/mongo_consumer_stderr.log &
+MONGO_CONSUMER_PID=$!
+echo "✓ MongoDB consumer started (PID: $MONGO_CONSUMER_PID)"
 
+# Wait for MongoDB consumer to be ready
+echo "↻ Waiting for MongoDB consumer to be ready..."
+sleep 5
+
+# Start Sentiment Analyzer
 echo "⟳ Starting Sentiment Analyzer..."
 conda run -n sentiment-stocks python "models/sentiment_analyzer.py" > logs/sentiment_analyzer.log 2>&1 &
+SENTIMENT_ANALYZER_PID=$!
+echo "✓ Sentiment Analyzer started (PID: $SENTIMENT_ANALYZER_PID)"
 
+# Wait for Sentiment Analyzer to initialize
+echo "↻ Waiting for Sentiment Analyzer to initialize..."
+sleep 10
 
+# Start producers
+echo "⟳ Starting data producers..."
 for p in twitter price; do
   conda run -n sentiment-stocks --no-capture-output \
         python "ingestion/${p}_producer.py" &
+  echo "✓ ${p} producer started"
 done
 
-
-
-
 # Training and Inference
-# 6. Add new options for model training and inference
 while getopts "ti" opt; do
   case $opt in
     t)
       echo "⟳ Starting model training with fresh data aggregation..."
       cd "$(dirname "$0")"
-      # Run the Python file directly
       conda run -n sentiment-stocks python models/model_training.py > logs/model_training.log 2>&1
       ;;
     i)
       echo "⟳ Starting inference service..."
-      # Ensure the process is properly backgrounded and managed
       (conda run -n sentiment-stocks python models/inference.py > logs/inference_service.log 2>&1) &
-      echo $! > inference_service.pid  # Save PID for later management
+      echo $! > inference_service.pid
       ;;
     *)
       echo "Usage: $0 [-t] [-i]" >&2
@@ -123,27 +117,33 @@ while getopts "ti" opt; do
   esac
 done
 
-# # If no options passed, run the standard pipeline
-# if [ $OPTIND -eq 1 ]; then
-#   echo "✓ Standard pipeline started"
-#   # Keep your existing pipeline flow here
-# fi
+# 6) Verify services are running
+echo "✓ Verifying services..."
+if ! ps -p $MONGO_CONSUMER_PID > /dev/null; then
+    echo "❌ MongoDB consumer is not running"
+    exit 1
+fi
 
-# 7. Add health check for MongoDB data
+if ! ps -p $SENTIMENT_ANALYZER_PID > /dev/null; then
+    echo "❌ Sentiment Analyzer is not running"
+    exit 1
+fi
+
+# 7) Check MongoDB data
 echo "✓ Verifying MongoDB data..."
-docker exec -it mongodb mongo --eval "
-db = db.getSiblingDB('stock_sentiment');
+docker exec -it multimodal-stock-prediction-mongodb-1 mongosh --eval "
+db = db.getSiblingDB('stock_data');
 print('Collections:');
 db.getCollectionNames();
 print('\nSample sentiment data:');
-db.your_collection.find({'data.type':'sentiment'}).limit(1).pretty();
+db.stream_data.find({'data.type':'sentiment'}).limit(1).pretty();
 print('\nSample price data:');
-db.your_collection.find({'data.type':'price'}).limit(1).pretty();
+db.stream_data.find({'data.type':'price'}).limit(1).pretty();
 " > logs/mongo_data_check.log
 
 echo "✓ Pipeline ready"
 echo "   - Use './run_pipeline.sh -t' to train model"
 echo "   - Use './run_pipeline.sh -i' to start inference"
 
-# 5) Wait for everything
+# 8) Wait for everything
 wait

@@ -18,3 +18,5 @@ dependencies:
   - torch
   - torchvision
   - torchaudio
+  - scikit-learn
+  - matplotlib

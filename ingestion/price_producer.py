@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
+import random
 
 # Set up logging
 logging.basicConfig(
@@ -17,6 +18,7 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+logger = logging.getLogger(__name__)
 
 # Get the directory where this script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -48,6 +50,31 @@ producer = lazy_producer()
 # Start each ticker at an arbitrary base price
 watchlist = cfg["symbols"]["watchlist"]
 
+def fetch_with_retry(symbol, max_retries=5, initial_delay=2):
+    """Fetch data with exponential backoff and retry logic"""
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            # Add jitter to avoid thundering herd
+            jitter = random.uniform(0, 0.1 * delay)
+            time.sleep(delay + jitter)
+            
+            data = yf.download(symbol, period="1d", interval="1m")
+            if not data.empty:
+                return data
+            logger.warning(f"No data returned for {symbol} on attempt {attempt + 1}")
+            
+        except Exception as e:
+            if "Too Many Requests" in str(e):
+                logger.warning(f"Rate limit hit for {symbol} on attempt {attempt + 1}, waiting {delay:.1f}s")
+                delay *= 2  # Exponential backoff
+            else:
+                logger.error(f"Error fetching {symbol}: {str(e)}")
+                return None
+                
+    logger.error(f"Failed to fetch {symbol} after {max_retries} attempts")
+    return None
+
 # Fetch historical data (60 days)
 end = datetime.now()
 start = end - timedelta(days=60)
@@ -56,13 +83,12 @@ historical_data = {}
 logging.info("Fetching historical data from yfinance...")
 
 for symbol in watchlist:
-    df = yf.download(symbol, start=start, end=end)
-    if df.empty:
+    data = fetch_with_retry(symbol)
+    if data is not None and not data.empty:
+        historical_data[symbol] = data
+        logging.info(f"Fetched historical price data for company: {symbol}")
+    else:
         logging.warning(f"No data for symbol: {symbol}")
-        continue
-    # historical_data[symbol] = df.reset_index()[["Date", "Close", "Open", "Volume"]]
-    historical_data[symbol] = df
-    logging.info(f"Fetched historical price data for company: {symbol}")
     time.sleep(1)
 
 logging.info("⇢ Price producer streaming real historical data…")
