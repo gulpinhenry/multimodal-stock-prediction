@@ -101,7 +101,6 @@ for company in companies:
 
     except Exception as e:
         logging.error(f"Error fetching posts for {company}: {e}")
-    break
     time.sleep(1)  
 
 logging.info("⇢ Bluesky producer finished run.")

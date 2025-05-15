@@ -64,7 +64,6 @@ for symbol in watchlist:
     historical_data[symbol] = df
     logging.info(f"Fetched historical price data for company: {symbol}")
     time.sleep(1)
-    break
 
 logging.info("⇢ Price producer streaming real historical data…")
 
