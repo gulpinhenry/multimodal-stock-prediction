@@ -1,0 +1,16 @@
+{
+    "_id": "68263da68209c582b33cad76",
+    "source_topic": "twitter_raw",
+    "kafka_timestamp_ms": 1747336613947,
+    "symbol": "microsoft",
+    "timestamp": "2025-05-15",
+    "data": {
+      "type": "sentiment",
+      "text": "The current versions of Windows & Microsoft are the worst I've ever experienced. There is nothing efficient about the way they're running things rn.",
+      "id": "bafyreibwu55dcjt5bxz3zlswvrcuxbbziyo7ro46qod6beoqg6bs7lnawy",
+      "original_text": "The current versions of Windows & Microsoft are the worst I've ever experienced.\n There is nothing efficient about the way they're running things rn.",
+      "processed_at": "2025-05-15T19:17:21.221953",
+      "sentiment_label": "negative",
+      "sentiment_score": 0.0047799897193909
+    }
+}
