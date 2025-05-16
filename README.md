@@ -1,3 +1,3 @@
 # multimodal-stock-prediction
-Harsha Mupparaju Nived Damodaran Henry Kam Abhipal Sharma
-sm12754	nd2746	hjk9412	as20410
+Harsha Mupparaju (sm12754)   Nived Damodaran (nd2746)   Henry Kam  (hjk9412)   Abhipal Sharma (as20410)
+
